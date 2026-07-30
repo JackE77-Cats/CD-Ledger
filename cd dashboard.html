@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D71E28">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CD Ledger">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
+<title>CD Earnings Ledger</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg-0: #0A0E14;
+    --bg-1: #10151F;
+    --glass: rgba(255,255,255,0.045);
+    --glass-hi: rgba(255,255,255,0.09);
+    --line: rgba(255,255,255,0.09);
+    --line-hi: rgba(255,255,255,0.18);
+    --emerald: #D71E28;
+    --emerald-dim: #A30F1D;
+    --gold: #FFCC02;
+    --gold-dim: #CC9F00;
+    --rust: #E0654F;
+    --text: #EAF0EC;
+    --text-dim: #8C9A93;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1100px 600px at 12% -10%, rgba(215,30,40,0.16), transparent 60%),
+      radial-gradient(900px 500px at 100% 10%, rgba(255,204,2,0.10), transparent 55%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1) 40%, var(--bg-0));
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    padding: 32px 22px 70px;
+    padding-top: max(32px, env(safe-area-inset-top));
+    padding-bottom: max(70px, env(safe-area-inset-bottom));
+    padding-left: max(22px, env(safe-area-inset-left));
+    padding-right: max(22px, env(safe-area-inset-right));
+  }
+
+  .masthead {
+    max-width: 1120px;
+    margin: 0 auto 26px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .masthead h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 30px;
+    margin: 0;
+    letter-spacing: 0.2px;
+    background: linear-gradient(180deg, #FFFFFF, #B9C4BE);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .masthead .sub {
+    font-size: 12px;
+    color: var(--emerald);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 6px;
+    font-weight: 600;
+  }
+  .ledger-no {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .layout {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 940px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    body { padding: 18px 14px 40px; }
+    .masthead {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+    .masthead h1 { font-size: 24px; }
+    .ledger-no { text-align: left; }
+    .layout { gap: 16px; }
+    .panel { padding: 16px; border-radius: 14px; }
+    .add-btn, .toggle-btn, .mode-btn, .remove-btn, .modal-btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .money-input input, select, .num-input { font-size: 16px; padding: 11px 10px; }
+    .cd-card { padding: 14px; }
+    table.compare, .max-rank { font-size: 11px; }
+    table.compare th, table.compare td { padding: 8px 5px; }
+  }
+
+  .panel {
+    background: linear-gradient(160deg, var(--glass-hi), var(--glass) 40%, rgba(255,255,255,0.02));
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow:
+      0 30px 60px -20px rgba(0,0,0,0.65),
+      0 1px 0 rgba(255,255,255,0.08) inset,
+      0 -1px 0 rgba(0,0,0,0.4) inset;
+  }
+
+  .panel h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0 0 18px;
+    color: var(--text);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .add-btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    text-transform: none;
+    color: #FFFFFF;
+    background: linear-gradient(160deg, var(--emerald), var(--emerald-dim));
+    border: none;
+    padding: 9px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 6px 16px -4px rgba(215,30,40,0.55), 0 1px 0 rgba(255,255,255,0.3) inset;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .add-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -4px rgba(215,30,40,0.7), 0 1px 0 rgba(255,255,255,0.3) inset; }
+  .add-btn:active { transform: translateY(1px) scale(0.98); box-shadow: 0 2px 6px -2px rgba(215,30,40,0.5) inset; }
+
+  .cd-card {
+    position: relative;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border: 1px solid var(--line);
+    box-shadow:
+      0 14px 28px -14px rgba(0,0,0,0.6),
+      0 1px 0 rgba(255,255,255,0.06) inset;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .cd-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--swatch, var(--emerald));
+    box-shadow: 0 0 14px 1px var(--swatch, var(--emerald));
+  }
+  .cd-card:hover {
+    border-color: var(--line-hi);
+    box-shadow: 0 18px 34px -14px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.08) inset;
+  }
+
+  .cd-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .cd-card-head input.cd-name {
+    border: none;
+    background: transparent;
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    width: 68%;
+    padding: 3px 0;
+    border-bottom: 1px solid transparent;
+  }
+  .cd-card-head input.cd-name:focus { outline: none; border-bottom: 1px solid var(--emerald); }
+  .remove-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--rust);
+    cursor: pointer;
+    background: rgba(224,101,79,0.1);
+    border: 1px solid rgba(224,101,79,0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .remove-btn:hover { background: rgba(224,101,79,0.2); }
+
+  label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-dim);
+    margin: 10px 0 5px;
+  }
+  label:first-of-type { margin-top: 0; }
+
+  .money-input {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.3) inset;
+  }
+  .money-input span {
+    padding: 0 10px;
+    color: var(--text-dim);
+    border-right: 1px solid var(--line);
+    font-size: 13px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .money-input input {
+    border: none;
+    outline: none;
+    padding: 9px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    width: 100%;
+    background: transparent;
+    color: var(--text);
+  }
+
+  select, .num-input {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.25);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.3) inset;
+    padding: 9px 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    border-radius: 10px;
+    color: var(--text);
+  }
+  select option { background: #131A25; color: var(--text); }
+  input:focus, select:focus { outline: none; border-color: var(--emerald); }
+
+  .term-row { display: flex; gap: 8px; }
+  .term-row .num-input { flex: 1; }
+  .term-row select { flex: 1; }
+
+
+  .toggle-row { display: flex; gap: 6px; margin-top: 4px; }
+  .toggle-btn {
+    flex: 1;
+    padding: 7px;
+    text-align: center;
+    border: 1px solid var(--line);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    background: rgba(0,0,0,0.2);
+    color: var(--text-dim);
+    border-radius: 8px;
+    transition: all 0.15s ease;
+  }
+  .toggle-btn.active {
+    background: linear-gradient(160deg, var(--gold), var(--gold-dim));
+    color: #241A05;
+    border-color: transparent;
+    box-shadow: 0 4px 12px -3px rgba(255,204,2,0.5);
+  }
+
+  .rate-note {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-top: 16px;
+    line-height: 1.6;
+  }
+
+  /* Results */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 14px; font-size: 11.5px; }
+  .legend-item { display: flex; align-items: center; gap: 7px; color: var(--text-dim); font-weight: 500; }
+  .legend-swatch {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+    box-shadow: 0 0 8px 1px currentColor;
+  }
+
+  .chart-shell {
+    border-radius: 14px;
+    background: rgba(0,0,0,0.28);
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.35) inset;
+    padding: 14px 10px 4px;
+  }
+  svg text { font-family: 'IBM Plex Mono', monospace; }
+
+  table.compare {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+    font-size: 12.5px;
+  }
+  table.compare th {
+    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 8px;
+  }
+  table.compare th:first-child, table.compare td:first-child { text-align: left; }
+  table.compare td {
+    text-align: right;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  table.compare tr:last-child td { border-bottom: none; }
+  table.compare td:first-child { font-family: 'Inter', sans-serif; font-weight: 600; }
+  table.compare tr.best {
+    background: linear-gradient(90deg, rgba(255,204,2,0.12), transparent);
+  }
+  table.compare tr.best td.hl {
+    color: var(--gold);
+    font-weight: 700;
+    text-shadow: 0 0 12px rgba(255,204,2,0.45);
+  }
+  .name-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 7px; box-shadow: 0 0 8px 1px currentColor; }
+
+  .footnote {
+    max-width: 1120px;
+    margin: 26px auto 0;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  /* Maximize modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4,6,10,0.65);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    width: 340px;
+    max-width: 90vw;
+    background: linear-gradient(160deg, var(--glass-hi), var(--glass) 40%, rgba(255,255,255,0.02));
+    backdrop-filter: blur(22px);
+    border: 1px solid var(--line-hi);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 1px 0 rgba(255,255,255,0.08) inset;
+  }
+  .modal-box h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    margin: 0 0 8px;
+    color: var(--text);
+  }
+  .modal-box p {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin: 0 0 14px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .modal-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .modal-btn.cancel {
+    background: rgba(255,255,255,0.06);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+  }
+  .modal-btn.confirm {
+    background: linear-gradient(160deg, var(--emerald), var(--emerald-dim));
+    color: #fff;
+    box-shadow: 0 6px 16px -4px rgba(215,30,40,0.55);
+  }
+  .modal-btn.confirm:hover { transform: translateY(-1px); }
+
+  /* Maximize result */
+  .max-result {
+    margin-top: 20px;
+    border-radius: 14px;
+    padding: 18px;
+    background: linear-gradient(120deg, rgba(255,204,2,0.10), rgba(215,30,40,0.06));
+    border: 1px solid rgba(255,204,2,0.35);
+  }
+  .max-result .headline {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .max-result .headline b { color: var(--gold); }
+  .max-result .detail {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .max-rank {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+  }
+  .max-rank th {
+    text-align: right;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px;
+    border-bottom: 1px solid var(--line);
+  }
+  .max-rank th:first-child, .max-rank td:first-child { text-align: left; }
+  .max-rank td {
+    text-align: right;
+    padding: 7px 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    border-bottom: 1px solid var(--line);
+  }
+  .max-rank tr:first-child td { color: var(--gold); font-weight: 700; }
+
+  .max-tag {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin-bottom: 8px;
+  }
+  .max-tag.gold {
+    color: #241A05;
+    background: linear-gradient(160deg, var(--gold), var(--gold-dim));
+    border-color: transparent;
+  }
+  .max-result.ladder {
+    margin-top: 14px;
+    background: linear-gradient(120deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border-color: var(--line-hi);
+  }
+  .ladder-table tfoot td {
+    border-top: 1px solid var(--line-hi);
+    border-bottom: none;
+    font-weight: 700;
+    color: var(--text);
+    padding-top: 9px;
+  }
+  .ladder-table tr:first-child td { color: var(--text); font-weight: 400; }
+  .ladder-table tr:first-child td:first-child { font-weight: 600; }
+
+  .ladder-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .ladder-head .headline { flex: 1; min-width: 200px; }
+  .mode-toggle {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(0,0,0,0.2);
+    color: var(--text-dim);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .mode-btn.active {
+    background: linear-gradient(160deg, var(--gold), var(--gold-dim));
+    color: #241A05;
+    border-color: transparent;
+  }
+  .share-pct {
+    color: var(--text-dim);
+    font-size: 10.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <h1>CD Earnings Ledger</h1>
+    <div class="sub">Wells Fargo · Certificate of Deposit Comparison</div>
+  </div>
+  <div class="ledger-no">No. 003<br>Est. as of Jul 2026</div>
+</div>
+
+<div class="layout" id="layout">
+  <div class="panel">
+    <h2>Deposits <button class="add-btn" id="addCd">+ Add CD</button></h2>
+    <div id="cardStack"></div>
+    <div class="rate-note">Enter each CD's deposit, term, and APY manually. The Standard/Relationship toggle is a label only — set the APY that applies to your account type. Wells Fargo rates vary by region and change without notice — verify current rates at wellsfargo.com before opening an account.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Side-by-Side Outcome <button class="add-btn maximize-btn" id="maximizeBtn">Maximize</button></h2>
+    <div class="legend" id="legend"></div>
+    <div class="chart-shell"><div class="chart-wrap" id="chartWrap"></div></div>
+    <table class="compare" id="compareTable">
+      <thead>
+        <tr><th>CD</th><th>Deposit</th><th>Term</th><th>APY</th><th>Maturity</th><th>Interest Earned</th><th>Yield</th></tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+    <div id="maximizeResult"></div>
+  </div>
+</div>
+
+<div class="footnote">
+  This is an estimate for planning purposes only, using standard compound-interest math. It does not account for early-withdrawal penalties, tax withholding, or mid-term rate changes on variable products. Wells Fargo CD rates shown were sourced from public rate pages and third-party rate trackers in July 2026 and are illustrative — confirm current rates and terms directly with Wells Fargo.
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box">
+    <h3>How much are you looking to invest?</h3>
+    <p>We'll check it against every CD you've set up and tell you which one earns the most.</p>
+    <div class="money-input">
+      <span>$</span>
+      <input type="number" id="investAmount" min="0" step="100" value="10000">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+      <button class="modal-btn confirm" id="modalConfirm">Calculate</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PALETTE = ['#D71E28', '#FFCC02', '#8C1116', '#B8860B', '#5B5957', '#E8747C'];
+
+let cds = [
+  { id: 1, name: 'CD Option A', principal: 10000, termValue: 12, termUnit: 'months', apy: 1.50, compounding: 365, tier: 'standard' },
+  { id: 2, name: 'CD Option B', principal: 10000, termValue: 4,  termUnit: 'months', apy: 3.49, compounding: 365, tier: 'standard' },
+];
+let nextId = 3;
+
+function fmtMoney(n) {
+  return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function termInMonths(cd) {
+  return cd.termUnit === 'years' ? cd.termValue * 12 : cd.termValue;
+}
+function computeSeries(cd) {
+  const months = Math.max(1, Math.round(termInMonths(cd)));
+  const r = cd.apy / 100;
+  const n = cd.compounding;
+  const series = [];
+  for (let m = 0; m <= months; m++) {
+    const t = m / 12;
+    series.push({ m, v: cd.principal * Math.pow(1 + r / n, n * t) });
+  }
+  return { months, series };
+}
+
+function renderCards() {
+  const stack = document.getElementById('cardStack');
+  stack.innerHTML = '';
+  cds.forEach((cd, idx) => {
+    const color = PALETTE[idx % PALETTE.length];
+    const card = document.createElement('div');
+    card.className = 'cd-card';
+    card.style.setProperty('--swatch', color);
+
+    card.innerHTML = `
+      <div class="cd-card-head">
+        <input class="cd-name" value="${cd.name}" data-field="name" />
+        ${cds.length > 1 ? '<button class="remove-btn" data-remove>Remove</button>' : ''}
+      </div>
+      <label>Opening Deposit</label>
+      <div class="money-input"><span>$</span><input type="number" class="num-input" data-field="principal" value="${cd.principal}" min="0" step="100"></div>
+
+      <label>Term Length</label>
+      <div class="term-row">
+        <input type="number" class="num-input" data-field="termValue" value="${cd.termValue}" min="1">
+        <select data-field="termUnit">
+          <option value="months" ${cd.termUnit==='months'?'selected':''}>Months</option>
+          <option value="years" ${cd.termUnit==='years'?'selected':''}>Years</option>
+        </select>
+      </div>
+
+      <label>APY</label>
+      <div class="money-input"><input type="number" class="num-input" data-field="apy" value="${cd.apy}" min="0" step="0.01"><span>%</span></div>
+
+      <label>Compounding</label>
+      <select data-field="compounding">
+        <option value="365" ${cd.compounding==365?'selected':''}>Daily</option>
+        <option value="12" ${cd.compounding==12?'selected':''}>Monthly</option>
+        <option value="4" ${cd.compounding==4?'selected':''}>Quarterly</option>
+        <option value="1" ${cd.compounding==1?'selected':''}>Annually</option>
+      </select>
+
+      <label>Rate Tier</label>
+      <div class="toggle-row" data-tiergroup>
+        <div class="toggle-btn ${cd.tier==='standard'?'active':''}" data-tier="standard">Standard</div>
+        <div class="toggle-btn ${cd.tier==='relationship'?'active':''}" data-tier="relationship">Relationship</div>
+      </div>
+    `;
+
+    card.querySelectorAll('[data-field]').forEach(el => {
+      el.addEventListener('input', () => updateField(cd.id, el.dataset.field, el.value));
+      el.addEventListener('change', () => updateField(cd.id, el.dataset.field, el.value));
+    });
+    card.querySelectorAll('[data-tier]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        cd.tier = btn.dataset.tier;
+        renderCards();
+        recalcAll();
+      });
+    });
+    const removeBtn = card.querySelector('[data-remove]');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        cds = cds.filter(c => c.id !== cd.id);
+        renderCards();
+        recalcAll();
+      });
+    }
+
+    stack.appendChild(card);
+  });
+}
+
+function updateField(id, field, value) {
+  const cd = cds.find(c => c.id === id);
+  if (!cd) return;
+  if (field === 'name' || field === 'termUnit') {
+    cd[field] = value;
+  } else {
+    cd[field] = parseFloat(value) || 0;
+  }
+  recalcAll();
+}
+
+document.getElementById('addCd').addEventListener('click', () => {
+  cds.push({ id: nextId++, name: 'CD Option ' + String.fromCharCode(64 + cds.length + 1), principal: 10000, termValue: 12, termUnit: 'months', apy: 1.50, compounding: 365, tier: 'standard' });
+  renderCards();
+  recalcAll();
+});
+
+function buildChart() {
+  const wrap = document.getElementById('chartWrap');
+  const w = 640, h = 230, padL = 66, padB = 26, padT = 16, padR = 16;
+
+  const allData = cds.map((cd, idx) => ({ cd, color: PALETTE[idx % PALETTE.length], ...computeSeries(cd) }));
+  const maxMonths = Math.max(...allData.map(d => d.months), 1);
+  const maxV = Math.max(...allData.flatMap(d => d.series.map(p => p.v)));
+  const minV = Math.min(...cds.map(cd => cd.principal), 0);
+  const range = (maxV - minV) || 1;
+
+  const x = m => padL + (m / maxMonths) * (w - padL - padR);
+  const y = v => (h - padB) - ((v - minV) / range) * (h - padB - padT);
+
+  const gridLines = [0, 0.5, 1].map(f => {
+    const val = minV + f * range;
+    const yy = y(val);
+    return `<line x1="${padL}" y1="${yy}" x2="${w-padR}" y2="${yy}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            <text x="${padL - 10}" y="${yy + 4}" font-size="10" fill="#8C9A93" text-anchor="end">${fmtMoney(val)}</text>`;
+  }).join('');
+
+  const defs = allData.map((d, i) => `
+    <linearGradient id="fill${i}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${d.color}" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="${d.color}" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow${i}" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  `).join('');
+
+  const shapes = allData.map((d, i) => {
+    let path = '';
+    d.series.forEach((p, j) => {
+      path += (j === 0 ? 'M' : 'L') + x(p.m).toFixed(1) + ',' + y(p.v).toFixed(1) + ' ';
+    });
+    const last = d.series[d.series.length - 1];
+    const areaPath = path + `L${x(last.m).toFixed(1)},${(h-padB)} L${x(0).toFixed(1)},${(h-padB)} Z`;
+    return `
+      <path d="${areaPath}" fill="url(#fill${i})"/>
+      <path d="${path}" fill="none" stroke="${d.color}" stroke-width="2.75" filter="url(#glow${i})" stroke-linecap="round"/>
+      <circle cx="${x(last.m)}" cy="${y(last.v)}" r="5" fill="${d.color}" stroke="#0A0E14" stroke-width="2"/>
+    `;
+  }).join('');
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+      <defs>${defs}</defs>
+      ${gridLines}
+      ${shapes}
+    </svg>
+  `;
+
+  const legend = document.getElementById('legend');
+  legend.innerHTML = allData.map(d => `<div class="legend-item" style="color:${d.color}"><span class="legend-swatch" style="background:${d.color}"></span><span style="color:var(--text-dim)">${d.cd.name}</span></div>`).join('');
+}
+
+function renderCompareTable() {
+  const body = document.getElementById('compareBody');
+  const results = cds.map((cd, idx) => {
+    const months = termInMonths(cd);
+    const years = months / 12;
+    const r = cd.apy / 100;
+    const maturity = cd.principal * Math.pow(1 + r / cd.compounding, cd.compounding * years);
+    const interest = maturity - cd.principal;
+    const yieldPct = cd.principal > 0 ? (interest / cd.principal) * 100 : 0;
+    return { cd, color: PALETTE[idx % PALETTE.length], months, maturity, interest, yieldPct };
+  });
+  const bestId = results.reduce((best, r) => (r.interest > best.interest ? r : best), results[0])?.cd.id;
+
+  body.innerHTML = results.map(r => `
+    <tr class="${r.cd.id === bestId ? 'best' : ''}">
+      <td><span class="name-swatch" style="background:${r.color};color:${r.color}"></span>${r.cd.name}</td>
+      <td>${fmtMoney(r.cd.principal)}</td>
+      <td>${r.months} mo</td>
+      <td>${r.cd.apy.toFixed(2)}%</td>
+      <td class="hl">${fmtMoney(r.maturity)}</td>
+      <td class="hl">${fmtMoney(r.interest)}</td>
+      <td>${r.yieldPct.toFixed(2)}%</td>
+    </tr>
+  `).join('');
+}
+
+function recalcAll() {
+  buildChart();
+  renderCompareTable();
+}
+
+renderCards();
+recalcAll();
+
+// Maximize feature
+const modalOverlay = document.getElementById('modalOverlay');
+const investInput = document.getElementById('investAmount');
+let lastInvestAmount = null;
+let ladderMode = 'weighted'; // 'weighted' or 'equal'
+
+document.getElementById('maximizeBtn').addEventListener('click', () => {
+  if (cds.length === 0) return;
+  modalOverlay.classList.add('show');
+  investInput.focus();
+  investInput.select();
+});
+document.getElementById('modalCancel').addEventListener('click', () => {
+  modalOverlay.classList.remove('show');
+});
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) modalOverlay.classList.remove('show');
+});
+document.getElementById('modalConfirm').addEventListener('click', () => {
+  const amount = parseFloat(investInput.value) || 0;
+  modalOverlay.classList.remove('show');
+  if (amount > 0) {
+    lastInvestAmount = amount;
+    renderMaximizeResults();
+  }
+});
+investInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('modalConfirm').click();
+});
+
+function computeLadderRungs(amount, mode) {
+  const n = cds.length;
+  let weights;
+  if (mode === 'weighted') {
+    const floor = 0.05; // keeps every rung meaningfully funded even at very low APY
+    weights = cds.map(cd => Math.max(cd.apy, floor));
+  } else {
+    weights = cds.map(() => 1);
+  }
+  const totalWeight = weights.reduce((s, w) => s + w, 0);
+
+  return cds.map((cd, idx) => {
+    const share = weights[idx] / totalWeight;
+    const allocated = amount * share;
+    const months = termInMonths(cd);
+    const years = months / 12;
+    const r = cd.apy / 100;
+    const maturity = allocated * Math.pow(1 + r / cd.compounding, cd.compounding * years);
+    const interest = maturity - allocated;
+    return { cd, color: PALETTE[idx % PALETTE.length], months, share, allocated, maturity, interest };
+  }).sort((a, b) => a.months - b.months);
+}
+
+function renderMaximizeResults() {
+  const amount = lastInvestAmount;
+  if (!amount) return;
+
+  const results = cds.map((cd, idx) => {
+    const months = termInMonths(cd);
+    const years = months / 12;
+    const r = cd.apy / 100;
+    const maturity = amount * Math.pow(1 + r / cd.compounding, cd.compounding * years);
+    const interest = maturity - amount;
+    return { cd, color: PALETTE[idx % PALETTE.length], months, maturity, interest };
+  }).sort((a, b) => b.interest - a.interest);
+
+  const best = results[0];
+  const rows = results.map((r, i) => `
+    <tr>
+      <td>${i === 0 ? '★ ' : ''}${r.cd.name}</td>
+      <td>${r.cd.apy.toFixed(2)}%</td>
+      <td>${r.months} mo</td>
+      <td>${fmtMoney(r.interest)}</td>
+      <td>${fmtMoney(r.maturity)}</td>
+    </tr>
+  `).join('');
+
+  const allInBlock = `
+    <div class="max-result">
+      <div class="max-tag">Strategy 1 · Maximum return</div>
+      <div class="headline">Put the full ${fmtMoney(amount)} into <b>${best.cd.name}</b></div>
+      <div class="detail">At ${best.cd.apy.toFixed(2)}% APY over ${best.months} months, that earns ${fmtMoney(best.interest)} in interest — a maturity value of ${fmtMoney(best.maturity)}. This is the single highest dollar return available among your configured CDs, but it locks up the entire amount for the full term.</div>
+      <table class="max-rank">
+        <thead><tr><th>CD</th><th>APY</th><th>Term</th><th>Interest</th><th>Maturity</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  let ladderBlock = '';
+  if (cds.length > 1) {
+    const rungs = computeLadderRungs(amount, ladderMode);
+    const totalInterest = rungs.reduce((s, x) => s + x.interest, 0);
+    const diff = best.interest - totalInterest;
+
+    const rungRows = rungs.map((x, i) => `
+      <tr>
+        <td><span class="name-swatch" style="background:${x.color};color:${x.color}"></span>Rung ${i + 1} · ${x.cd.name}</td>
+        <td>${fmtMoney(x.allocated)} <span class="share-pct">(${(x.share * 100).toFixed(0)}%)</span></td>
+        <td>${x.cd.apy.toFixed(2)}%</td>
+        <td>matures in ${x.months} mo</td>
+        <td>${fmtMoney(x.interest)}</td>
+      </tr>
+    `).join('');
+
+    const modeLabel = ladderMode === 'weighted' ? 'weighted toward higher APY' : 'split evenly';
+    ladderBlock = `
+      <div class="max-result ladder">
+        <div class="max-tag gold">Strategy 2 · Laddered</div>
+        <div class="ladder-head">
+          <div class="headline">Split ${fmtMoney(amount)} across all ${cds.length} CDs, ${modeLabel}</div>
+          <div class="mode-toggle">
+            <button class="mode-btn ${ladderMode==='weighted'?'active':''}" data-mode="weighted">Weighted by APY</button>
+            <button class="mode-btn ${ladderMode==='equal'?'active':''}" data-mode="equal">Equal split</button>
+          </div>
+        </div>
+        <div class="detail">Each rung below is sized by its APY — higher-yielding CDs get a larger share of the deposit — while still keeping every CD funded so cash frees up at multiple points in time. Total interest across the ladder: ${fmtMoney(totalInterest)} (${fmtMoney(diff)} less than going all-in on ${best.cd.name}, in exchange for staged liquidity).</div>
+        <table class="max-rank ladder-table">
+          <thead><tr><th>Rung</th><th>Allocated</th><th>APY</th><th>Timing</th><th>Interest</th></tr></thead>
+          <tbody>${rungRows}</tbody>
+          <tfoot><tr class="total-row"><td>Total</td><td>${fmtMoney(amount)}</td><td>—</td><td>—</td><td>${fmtMoney(totalInterest)}</td></tr></tfoot>
+        </table>
+      </div>
+    `;
+  } else {
+    ladderBlock = `
+      <div class="max-result ladder">
+        <div class="max-tag gold">Strategy 2 · Laddered</div>
+        <div class="detail">Add another CD with a different term to see a laddered split — laddering spreads your deposit across multiple maturity dates instead of locking it all into one CD.</div>
+      </div>
+    `;
+  }
+
+  document.getElementById('maximizeResult').innerHTML = allInBlock + ladderBlock;
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      ladderMode = btn.dataset.mode;
+      renderMaximizeResults();
+    });
+  });
+}
+// Register service worker so the app can be installed and used offline
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
